@@ -1,19 +1,19 @@
-require("dotenv").config();
-var keys = require("./keys");
-var request = require("request");
+require("dotenv").config(); // require dotenv
+var request = require("request"); //require request
+var keys = require("./keys"); // hidden keys for accessing Hue bridge
 var authorizedUser = keys.hue.id;
 var hueIp = keys.hue.ip;
-var action = process.argv[2];
-var lightNum = process.argv[3];
-var amount = process.argv[4];
-var lightsNum = 10;
+var queryUrl = `http://${hueIp}/api/${authorizedUser}`; // url base for API
+var action = process.argv[2]; // argument at index 2 is the action
+var lightNum = process.argv[3]; // argument at index 3 is the light number (when needed)
+var amount = process.argv[4]; // argument at index 4 is the amount to apply (for brightness, hue)
+var lightsNum = 10; // set a maximum number of lights/groups to loop through
 
-switch(action) {
+switch(action) { // functionality will change depending on the action input by the user
 
-    // turn single light on
-    case "on":
+    case "on": // turn single light on
         request({
-            url: `http://${hueIp}/api/${authorizedUser}/lights/${lightNum}/state/`,
+            url: `${queryUrl}/lights/${lightNum}/state/`,
             method: 'PUT',
             json: {on: true}
         }, (err) => {
@@ -22,10 +22,9 @@ switch(action) {
         });
     break;
 
-    // turn single light off
-    case "off":
+    case "off": // turn single light off
         request({
-            url: `http://${hueIp}/api/${authorizedUser}/lights/${lightNum}/state/`,
+            url: `${queryUrl}/lights/${lightNum}/state/`,
             method: 'PUT',
             json: {on: false}
         }, (err) => {
@@ -34,10 +33,9 @@ switch(action) {
         });
     break;
 
-    // change brightness of single light
-    case "bri":
+    case "bri": // change brightness of single light
         request({
-            url: `http://${hueIp}/api/${authorizedUser}/lights/${lightNum}/state/`,
+            url: `${queryUrl}/lights/${lightNum}/state/`,
             method: 'PUT',
             json: {bri: parseInt(amount)}
         }, (err) => {
@@ -46,11 +44,21 @@ switch(action) {
         });
     break;
 
-    // turn all lights on
-    case "all-on":
+    case "hue": // change hue of single light
+        request({
+            url: `${queryUrl}/lights/${lightNum}/state/`,
+            method: 'PUT',
+            json: {hue: parseInt(amount)}
+        }, (err) => {
+            if (err) console.log("State change was unsuccessful!");
+            console.log("State change was successful!");
+        });
+    break;
+
+    case "all-on": // turn all lights on
         for (let i = 1; lightsNum >= i > 0; i++) {
             request({
-                url: `http://${hueIp}/api/${authorizedUser}/lights/${i}/state/`,
+                url: `${queryUrl}/lights/${i}/state/`,
                 method: 'PUT',
                 json: {on: true}
             }, (err) => {
@@ -60,11 +68,10 @@ switch(action) {
         };
     break;
 
-    // turn all lights off
-    case "all-off":
+    case "all-off": // turn all lights off
         for (let i = 1; lightsNum >= i > 0; i++) {
             request({
-                url: `http://${hueIp}/api/${authorizedUser}/lights/${i}/state/`,
+                url: `${queryUrl}/lights/${i}/state/`,
                 method: 'PUT',
                 json: {on: false}
             }, (err) => {
@@ -74,10 +81,9 @@ switch(action) {
         };
     break;
 
-    // get a list of all lights connected to the hue bridge
-    case "light-list":
+    case "light-list": // get a list of all lights connected to the hue bridge
         for (let i = 1; lightsNum >= i > 0; i++) {
-            request(`http://${hueIp}/api/${authorizedUser}/lights/${i}`, (error, response, body) => {
+            request(`${queryUrl}/lights/${i}`, (error, response, body) => {
                 if (error) console.log(`There was an error getting data for light ${i}!`);
                 if (!error && response.statusCode === 200) {
                     var data = JSON.parse(body, null, 2);
@@ -90,10 +96,9 @@ switch(action) {
         };
     break;
 
-    // get a list of all light groups connected to the hue bridge
-    case "group-list":
+    case "group-list": // get a list of all light groups connected to the hue bridge
         for (let i = 1; 4 >= i > 0; i++) {
-            request(`http://${hueIp}/api/${authorizedUser}/groups/${i}`, (error, response, body) => {
+            request(`${queryUrl}/groups/${i}`, (error, response, body) => {
                 if (error) console.log(`There was an error getting data for group ${i}!`);
                 if (!error && response.statusCode === 200) {
                     var data = JSON.parse(body, null, 2);
@@ -105,12 +110,11 @@ switch(action) {
         };
     break;
 
-    // turn all lights on and off ten times
-    case "strobe":
+    case "strobe": // turn all lights on and off ten times
         for (let i = 0; i < 10; i++) {
             for (let i = 1; lightsNum >= i > 0; i++) {
                 request({
-                    url: `http://${hueIp}/api/${authorizedUser}/lights/${i}/state/`,
+                    url: `${queryUrl}/lights/${i}/state/`,
                     method: 'PUT',
                     json: {on: true}
                 }, (err) => {
@@ -118,7 +122,7 @@ switch(action) {
                     console.log("State change was successful!");
                 });
                 request({
-                    url: `http://${hueIp}/api/${authorizedUser}/lights/${i}/state/`,
+                    url: `${queryUrl}/lights/${i}/state/`,
                     method: 'PUT',
                     json: {on: false}
                 }, (err) => {
@@ -129,10 +133,9 @@ switch(action) {
         };
     break;
 
-    // change color light to "colorloop" effect - I only have one color light (light 3 - see url below)
-    case "colorloop":
+    case "colorloop": // change color light to "colorloop" effect - I only have 1 color light (light 3 - hard coded into the URL below)
         request({
-            url: `http://${hueIp}/api/${authorizedUser}/lights/3/state/`,
+            url: `${queryUrl}/lights/3/state/`,
             method: 'PUT',
             json: {on: true, effect: "colorloop"}
         }, (err) => {
