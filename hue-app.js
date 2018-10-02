@@ -1,10 +1,50 @@
+require("dotenv").config();
+var keys = require("./keys");
 var request = require("request");
-var authorizedUser = "Your registered user key";
-var hueIp = "Your Hue Bridge IP";
+var authorizedUser = keys.hue.id;
+var hueIp = keys.hue.ip;
 var action = process.argv[2];
+var lightNum = process.argv[3];
+var amount = process.argv[4];
 var lightsNum = 10;
 
 switch(action) {
+
+    // turn single light on
+    case "on":
+        request({
+            url: `http://${hueIp}/api/${authorizedUser}/lights/${lightNum}/state/`,
+            method: 'PUT',
+            json: {on: true}
+        }, (err) => {
+            if (err) console.log("State change was unsuccessful!");
+            console.log("State change was successful!");
+        });
+    break;
+
+    // turn single light off
+    case "off":
+        request({
+            url: `http://${hueIp}/api/${authorizedUser}/lights/${lightNum}/state/`,
+            method: 'PUT',
+            json: {on: false}
+        }, (err) => {
+            if (err) console.log("State change was unsuccessful!");
+            console.log("State change was successful!");
+        });
+    break;
+
+    // change brightness of single light
+    case "bri":
+        request({
+            url: `http://${hueIp}/api/${authorizedUser}/lights/${lightNum}/state/`,
+            method: 'PUT',
+            json: {bri: parseInt(amount)}
+        }, (err) => {
+            if (err) console.log("State change was unsuccessful!");
+            console.log("State change was successful!");
+        });
+    break;
 
     // turn all lights on
     case "all-on":
@@ -38,12 +78,13 @@ switch(action) {
     case "light-list":
         for (let i = 1; lightsNum >= i > 0; i++) {
             request(`http://${hueIp}/api/${authorizedUser}/lights/${i}`, (error, response, body) => {
-                if (error) console.log("There was an error getting the light data!");
+                if (error) console.log(`There was an error getting data for light ${i}!`);
                 if (!error && response.statusCode === 200) {
                     var data = JSON.parse(body, null, 2);
                     console.log(`\n${i}: ${data.name}`);
                     console.log(`Type: ${data.type}`);
-                    console.log(`On = ${data.state.on}\n`);
+                    console.log(`On: ${data.state.on}`);
+                    console.log(`Brightness: ${data.state.bri}\n`);
                 };
             });
         };
@@ -53,7 +94,7 @@ switch(action) {
     case "group-list":
         for (let i = 1; 4 >= i > 0; i++) {
             request(`http://${hueIp}/api/${authorizedUser}/groups/${i}`, (error, response, body) => {
-                if (error) console.log("There was an error getting the light data!");
+                if (error) console.log(`There was an error getting data for group ${i}!`);
                 if (!error && response.statusCode === 200) {
                     var data = JSON.parse(body, null, 2);
                     console.log(`\n${i}: ${data.name}`);
