@@ -5,74 +5,99 @@ var keys = require("./keys"); // hidden keys for accessing Hue bridge
 var authorizedUser = keys.hue.id;
 var hueIp = keys.hue.ip;
 var queryUrl = `http://${hueIp}/api/${authorizedUser}`; // url base for API
-var amount = process.argv[4]; // argument at index 4 is the amount to apply (for brightness, hue)
 var lightsNum = 10; // set a maximum number of lights/groups to loop through
-var questions = [ // questions for inquirer prompt
-{
+
+// questions for inquirer prompts
+var openingQ = [{
     type: "list",
     message: "What do you want to do?",
-    choices: ["on", "off", "exit"],
+    choices: ["light-list", "group-list", "on", "off", "all-on", "all-off", "hue", "brightness", "strobe", "colorloop", "exit"],
     name: "action"
+}];
+var numberQ = [{
+    type: "input",
+    message: "Enter light number...",
+    name: "lightNumber"
+}];
+var brightnessQ = [{
+    type: "input",
+    message: "Enter light number...",
+    name: "lightNumber"
 },
 {
     type: "input",
-    message: "Which light?",
+    message: "Enter brightness level (0-254)...",
+    name: "bri"
+}];
+var hueQ = [{
+    type: "input",
+    message: "Enter light number...",
     name: "lightNumber"
+},
+{
+    type: "input",
+    message: "Enter hue number (0-65535)...",
+    name: "hue"
 }];
 
 // inquire prompt recursive loop function
 function askAgain() {
-    inquirer.prompt(questions).then(function(answers) {
-        var lightNum = answers.lightNumber;
+    inquirer.prompt(openingQ).then(function(answers) {
         var action = answers.action;
-        if (lightNum === "all") {
-            var action = `${lightNum}-${action}`;
-        }
+        var lightsUrl = `${queryUrl}/lights/`
         switch(action) { // functionality will change depending on the action input by the user
             case "on": // turn single light on
-                request({
-                    url: `${queryUrl}/lights/${lightNum}/state/`,
-                    method: 'PUT',
-                    json: {on: true}
-                }, (err) => {
-                    if (err) console.log("State change was unsuccessful!");
+                inquirer.prompt(numberQ).then(function(answer) {
+                    request({
+                        url: `${lightsUrl}${answer.lightNumber}/state/`,
+                        method: 'PUT',
+                        json: {on: true}
+                    }, (err) => {
+                        if (err) console.log("State change was unsuccessful!");
+                    });
+                    askAgain();
                 });
-                askAgain();
             break;
             case "off": // turn single light off
-                request({
-                    url: `${queryUrl}/lights/${lightNum}/state/`,
-                    method: 'PUT',
-                    json: {on: false}
-                }, (err) => {
-                    if (err) console.log("State change was unsuccessful!");
+                inquirer.prompt(numberQ).then(function(answer) {
+                    request({
+                        url: `${lightsUrl}${answer.lightNumber}/state/`,
+                        method: 'PUT',
+                        json: {on: false}
+                    }, (err) => {
+                        if (err) console.log("State change was unsuccessful!");
+                    });
+                    askAgain();
                 });
-                askAgain();
             break;
-            case "bri": // change brightness of single light
-                request({
-                    url: `${queryUrl}/lights/${lightNum}/state/`,
-                    method: 'PUT',
-                    json: {bri: parseInt(amount)}
-                }, (err) => {
-                    if (err) console.log("State change was unsuccessful!");
+            case "brightness": // change brightness of single light
+                inquirer.prompt(brightnessQ).then(function(answer) {
+                    request({
+                        url: `${lightsUrl}${answer.lightNumber}/state/`,
+                        method: 'PUT',
+                        json: {bri: parseInt(answer.bri)}
+                    }, (err) => {
+                        if (err) console.log("State change was unsuccessful!");
+                    });
+                    askAgain();
                 });
-                askAgain();
             break;
             case "hue": // change hue of single light
-                request({
-                    url: `${queryUrl}/lights/${lightNum}/state/`,
-                    method: 'PUT',
-                    json: {hue: parseInt(amount)}
-                }, (err) => {
-                    if (err) console.log("State change was unsuccessful!");
+                inquirer.prompt(hueQ).then(function(answer) {
+                    request({
+                        url: `${lightsUrl}${answer.lightNumber}/state/`,
+                        method: 'PUT',
+                        json: {hue: parseInt(answer.hue)}
+                    }, (err) => {
+                        if (err) console.log("State change was unsuccessful!");
+                    });
+                    askAgain();
                 });
-                askAgain();
             break;
             case "all-on": // turn all lights on
                 for (let i = 1; lightsNum >= i > 0; i++) {
                     request({
-                        url: `${queryUrl}/lights/${i}/state/`,
+                        url: `${lightsUrl}${i}/state/`,
                         method: 'PUT',
                         json: {on: true}
                     }, (err) => {
@@ -84,7 +109,7 @@ function askAgain() {
             case "all-off": // turn all lights off
                 for (let i = 1; lightsNum >= i > 0; i++) {
                     request({
-                        url: `${queryUrl}/lights/${i}/state/`,
+                        url: `${lightsUrl}${i}/state/`,
                         method: 'PUT',
                         json: {on: false}
                     }, (err) => {
@@ -95,7 +120,7 @@ function askAgain() {
             break;
             case "light-list": // get a list of all lights connected to the hue bridge
                 for (let i = 1; lightsNum >= i > 0; i++) {
-                    request(`${queryUrl}/lights/${i}`, (error, response, body) => {
+                    request(`${lightsUrl}${i}`, (error, response, body) => {
                         if (error) console.log(`There was an error getting data for light ${i}!`);
                         if (!error && response.statusCode === 200) {
                             var data = JSON.parse(body, null, 2);
@@ -126,14 +151,14 @@ function askAgain() {
                 for (let i = 0; i < 10; i++) {
                     for (let i = 1; lightsNum >= i > 0; i++) {
                         request({
-                            url: `${queryUrl}/lights/${i}/state/`,
+                            url: `${lightsUrl}${i}/state/`,
                             method: 'PUT',
                             json: {on: true}
                         }, (err) => {
                             if (err) console.log("State change was unsuccessful!");
                                 });
                         request({
-                            url: `${queryUrl}/lights/${i}/state/`,
+                            url: `${lightsUrl}${i}/state/`,
                             method: 'PUT',
                             json: {on: false}
                         }, (err) => {
@@ -145,7 +170,7 @@ function askAgain() {
             break;
             case "colorloop": // change color light to "colorloop" effect - I only have 1 color light (light 3 - hard coded into the URL below)
                 request({
-                    url: `${queryUrl}/lights/3/state/`,
+                    url: `${lightsUrl}3/state/`,
                     method: 'PUT',
                     json: {on: true, effect: "colorloop"}
                 }, (err) => {
